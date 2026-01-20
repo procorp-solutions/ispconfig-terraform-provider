@@ -4,6 +4,9 @@
 
 version: 2
 
+# Set project name to match Terraform Registry expectations
+project_name: terraform-provider-ispconfig
+
 before:
   hooks:
     # this is just an example and not a requirement for provider building/publishing
