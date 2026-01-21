@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-01-22
+
+### Fixed
+
+- Fixed `ispconfig_web_user` resource not inheriting `server_id` from parent domain, causing users to be created without server assignment in ISPConfig UI
+
+### Changed
+
+- **BREAKING:** Changed `active` attribute in `ispconfig_web_user` resource and data source from string (`"y"`/`"n"`) to boolean (`true`/`false`)
+- **BREAKING:** Changed `active` and `remote_access` attributes in `ispconfig_web_database` resource and data source from string (`"y"`/`"n"`) to boolean (`true`/`false`)
+- This change unifies the boolean handling across all resources to match `ispconfig_web_hosting`
+
 ## [0.1.2] - 2026-01-21
 
 ### Added

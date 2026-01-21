@@ -19,7 +19,7 @@ resource "ispconfig_web_user" "example" {
   parent_domain_id = 1
   shell            = "/bin/bash"
   quota_size       = 1000
-  active           = "y"
+  active           = true
 }
 
 variable "shell_password" {
@@ -39,7 +39,7 @@ variable "shell_password" {
 
 ### Optional
 
-- `active` (String) Whether the shell user is active ('y' or 'n').
+- `active` (Boolean) Whether the shell user is active.
 - `client_id` (Number) The ISP Config client ID.
 - `dir` (String) The shell user directory path.
 - `quota_size` (Number) Quota size in MB.

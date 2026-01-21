@@ -17,7 +17,7 @@ resource "ispconfig_web_database" "example" {
   database_name    = "myapp_db"
   parent_domain_id = 1
   type             = "mysql"
-  active           = "y"
+  active           = true
   quota            = 500
 }
 ```
@@ -32,11 +32,11 @@ resource "ispconfig_web_database" "example" {
 
 ### Optional
 
-- `active` (String) Whether the database is active ('y' or 'n').
+- `active` (Boolean) Whether the database is active.
 - `client_id` (Number) The ISP Config client ID.
 - `database_user_id` (Number) The database user ID.
 - `quota` (Number) Database quota in MB.
-- `remote_access` (String) Enable remote access ('y' or 'n').
+- `remote_access` (Boolean) Enable remote access.
 - `remote_ips` (String) Comma-separated list of IPs allowed for remote access.
 - `server_id` (Number) The server ID.
 - `type` (String) The database type (e.g., 'mysql', 'postgresql').

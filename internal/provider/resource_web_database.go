@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -16,6 +17,18 @@ import (
 
 	"github.com/procorp-solutions/ispconfig-terraform-provider/internal/client"
 )
+
+// Helper functions for bool to Y/N conversion
+func webDBBoolToYN(b bool) string {
+	if b {
+		return "y"
+	}
+	return "n"
+}
+
+func webDBYNToBool(s string) bool {
+	return s == "y" || s == "Y"
+}
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
@@ -44,9 +57,9 @@ type webDatabaseResourceModel struct {
 	ParentDomainID types.Int64  `tfsdk:"parent_domain_id"`
 	Type           types.String `tfsdk:"type"`
 	Quota          types.Int64  `tfsdk:"quota"`
-	Active         types.String `tfsdk:"active"`
+	Active         types.Bool   `tfsdk:"active"`
 	ServerID       types.Int64  `tfsdk:"server_id"`
-	RemoteAccess   types.String `tfsdk:"remote_access"`
+	RemoteAccess   types.Bool   `tfsdk:"remote_access"`
 	RemoteIPs      types.String `tfsdk:"remote_ips"`
 }
 
@@ -95,22 +108,22 @@ func (r *webDatabaseResource) Schema(_ context.Context, _ resource.SchemaRequest
 				Optional:    true,
 				Computed:    true,
 			},
-			"active": schema.StringAttribute{
-				Description: "Whether the database is active ('y' or 'n').",
+			"active": schema.BoolAttribute{
+				Description: "Whether the database is active.",
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString("y"),
+				Default:     booldefault.StaticBool(true),
 			},
 			"server_id": schema.Int64Attribute{
 				Description: "The server ID.",
 				Optional:    true,
 				Computed:    true,
 			},
-			"remote_access": schema.StringAttribute{
-				Description: "Enable remote access ('y' or 'n').",
+			"remote_access": schema.BoolAttribute{
+				Description: "Enable remote access.",
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString("n"),
+				Default:     booldefault.StaticBool(false),
 			},
 			"remote_ips": schema.StringAttribute{
 				Description: "Comma-separated list of IPs allowed for remote access.",
@@ -179,13 +192,13 @@ func (r *webDatabaseResource) Create(ctx context.Context, req resource.CreateReq
 		database.DatabaseQuota = client.FlexInt(plan.Quota.ValueInt64())
 	}
 	if !plan.Active.IsNull() {
-		database.Active = plan.Active.ValueString()
+		database.Active = webDBBoolToYN(plan.Active.ValueBool())
 	}
 	if !plan.ServerID.IsNull() {
 		database.ServerID = client.FlexInt(plan.ServerID.ValueInt64())
 	}
 	if !plan.RemoteAccess.IsNull() {
-		database.RemoteAccess = plan.RemoteAccess.ValueString()
+		database.RemoteAccess = webDBBoolToYN(plan.RemoteAccess.ValueBool())
 	}
 	if !plan.RemoteIPs.IsNull() {
 		database.RemoteIPs = plan.RemoteIPs.ValueString()
@@ -229,10 +242,10 @@ func (r *webDatabaseResource) Create(ctx context.Context, req resource.CreateReq
 		plan.Quota = types.Int64Value(int64(createdDB.DatabaseQuota))
 	}
 	if plan.Active.IsNull() || plan.Active.IsUnknown() {
-		plan.Active = types.StringValue(createdDB.Active)
+		plan.Active = types.BoolValue(webDBYNToBool(createdDB.Active))
 	}
 	if plan.RemoteAccess.IsNull() || plan.RemoteAccess.IsUnknown() {
-		plan.RemoteAccess = types.StringValue(createdDB.RemoteAccess)
+		plan.RemoteAccess = types.BoolValue(webDBYNToBool(createdDB.RemoteAccess))
 	}
 	if plan.RemoteIPs.IsNull() || plan.RemoteIPs.IsUnknown() {
 		plan.RemoteIPs = types.StringValue(createdDB.RemoteIPs)
@@ -272,11 +285,11 @@ func (r *webDatabaseResource) Read(ctx context.Context, req resource.ReadRequest
 	if database.DatabaseQuota != 0 {
 		state.Quota = types.Int64Value(int64(database.DatabaseQuota))
 	}
-	state.Active = types.StringValue(database.Active)
+	state.Active = types.BoolValue(webDBYNToBool(database.Active))
 	if database.ServerID != 0 {
 		state.ServerID = types.Int64Value(int64(database.ServerID))
 	}
-	state.RemoteAccess = types.StringValue(database.RemoteAccess)
+	state.RemoteAccess = types.BoolValue(webDBYNToBool(database.RemoteAccess))
 	state.RemoteIPs = types.StringValue(database.RemoteIPs)
 
 	diags = resp.State.Set(ctx, &state)
@@ -324,13 +337,13 @@ func (r *webDatabaseResource) Update(ctx context.Context, req resource.UpdateReq
 		database.DatabaseQuota = client.FlexInt(plan.Quota.ValueInt64())
 	}
 	if !plan.Active.IsNull() {
-		database.Active = plan.Active.ValueString()
+		database.Active = webDBBoolToYN(plan.Active.ValueBool())
 	}
 	if !plan.ServerID.IsNull() {
 		database.ServerID = client.FlexInt(plan.ServerID.ValueInt64())
 	}
 	if !plan.RemoteAccess.IsNull() {
-		database.RemoteAccess = plan.RemoteAccess.ValueString()
+		database.RemoteAccess = webDBBoolToYN(plan.RemoteAccess.ValueBool())
 	}
 	if !plan.RemoteIPs.IsNull() {
 		database.RemoteIPs = plan.RemoteIPs.ValueString()
@@ -372,10 +385,10 @@ func (r *webDatabaseResource) Update(ctx context.Context, req resource.UpdateReq
 		plan.Quota = types.Int64Value(int64(updatedDB.DatabaseQuota))
 	}
 	if plan.Active.IsNull() || plan.Active.IsUnknown() {
-		plan.Active = types.StringValue(updatedDB.Active)
+		plan.Active = types.BoolValue(webDBYNToBool(updatedDB.Active))
 	}
 	if plan.RemoteAccess.IsNull() || plan.RemoteAccess.IsUnknown() {
-		plan.RemoteAccess = types.StringValue(updatedDB.RemoteAccess)
+		plan.RemoteAccess = types.BoolValue(webDBYNToBool(updatedDB.RemoteAccess))
 	}
 	if plan.RemoteIPs.IsNull() || plan.RemoteIPs.IsUnknown() {
 		plan.RemoteIPs = types.StringValue(updatedDB.RemoteIPs)

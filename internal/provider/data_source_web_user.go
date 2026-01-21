@@ -11,6 +11,11 @@ import (
 	"github.com/procorp-solutions/ispconfig-terraform-provider/internal/client"
 )
 
+// Helper function for Y/N to bool conversion
+func webUserDSYNToBool(s string) bool {
+	return s == "y" || s == "Y"
+}
+
 // Ensure the implementation satisfies the expected interfaces.
 var (
 	_ datasource.DataSource              = &webUserDataSource{}
@@ -34,7 +39,7 @@ type webUserDataSourceModel struct {
 	ParentDomainID types.Int64  `tfsdk:"parent_domain_id"`
 	Dir            types.String `tfsdk:"dir"`
 	QuotaSize      types.Int64  `tfsdk:"quota_size"`
-	Active         types.String `tfsdk:"active"`
+	Active         types.Bool   `tfsdk:"active"`
 	ServerID       types.Int64  `tfsdk:"server_id"`
 	UID            types.String `tfsdk:"uid"`
 	GID            types.String `tfsdk:"gid"`
@@ -70,7 +75,7 @@ func (d *webUserDataSource) Schema(_ context.Context, _ datasource.SchemaRequest
 				Description: "Quota size in MB.",
 				Computed:    true,
 			},
-			"active": schema.StringAttribute{
+			"active": schema.BoolAttribute{
 				Description: "Whether the shell user is active.",
 				Computed:    true,
 			},
@@ -137,7 +142,7 @@ func (d *webUserDataSource) Read(ctx context.Context, req datasource.ReadRequest
 	} else {
 		config.QuotaSize = types.Int64Null()
 	}
-	config.Active = types.StringValue(shellUser.Active)
+	config.Active = types.BoolValue(webUserDSYNToBool(shellUser.Active))
 	if shellUser.ServerID != 0 {
 		config.ServerID = types.Int64Value(int64(shellUser.ServerID))
 	} else {

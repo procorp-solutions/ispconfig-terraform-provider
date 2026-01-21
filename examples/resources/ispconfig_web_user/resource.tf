@@ -4,7 +4,7 @@ resource "ispconfig_web_user" "example" {
   parent_domain_id = 1
   shell            = "/bin/bash"
   quota_size       = 1000
-  active           = "y"
+  active           = true
 }
 
 variable "shell_password" {

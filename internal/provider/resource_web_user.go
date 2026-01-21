@@ -8,6 +8,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
@@ -16,6 +17,18 @@ import (
 
 	"github.com/procorp-solutions/ispconfig-terraform-provider/internal/client"
 )
+
+// Helper functions for bool to Y/N conversion
+func webUserBoolToYN(b bool) string {
+	if b {
+		return "y"
+	}
+	return "n"
+}
+
+func webUserYNToBool(s string) bool {
+	return s == "y" || s == "Y"
+}
 
 // Ensure the implementation satisfies the expected interfaces.
 var (
@@ -45,7 +58,7 @@ type webUserResourceModel struct {
 	Dir            types.String `tfsdk:"dir"`
 	Shell          types.String `tfsdk:"shell"`
 	QuotaSize      types.Int64  `tfsdk:"quota_size"`
-	Active         types.String `tfsdk:"active"`
+	Active         types.Bool   `tfsdk:"active"`
 	ServerID       types.Int64  `tfsdk:"server_id"`
 	UID            types.String `tfsdk:"uid"`
 	GID            types.String `tfsdk:"gid"`
@@ -101,11 +114,11 @@ func (r *webUserResource) Schema(_ context.Context, _ resource.SchemaRequest, re
 			Optional:    true,
 			Computed:    true,
 		},
-			"active": schema.StringAttribute{
-				Description: "Whether the shell user is active ('y' or 'n').",
+			"active": schema.BoolAttribute{
+				Description: "Whether the shell user is active.",
 				Optional:    true,
 				Computed:    true,
-				Default:     stringdefault.StaticString("y"),
+				Default:     booldefault.StaticBool(true),
 			},
 			"server_id": schema.Int64Attribute{
 				Description: "The server ID.",
@@ -195,10 +208,13 @@ func (r *webUserResource) Create(ctx context.Context, req resource.CreateRequest
 		shellUser.QuotaSize = client.FlexInt(plan.QuotaSize.ValueInt64())
 	}
 	if !plan.Active.IsNull() {
-		shellUser.Active = plan.Active.ValueString()
+		shellUser.Active = webUserBoolToYN(plan.Active.ValueBool())
 	}
 	if !plan.ServerID.IsNull() {
 		shellUser.ServerID = client.FlexInt(plan.ServerID.ValueInt64())
+	} else {
+		// Inherit server_id from parent domain
+		shellUser.ServerID = parentDomain.ServerID
 	}
 
 	// Create shell user
@@ -239,8 +255,8 @@ func (r *webUserResource) Create(ctx context.Context, req resource.CreateRequest
 	if plan.QuotaSize.IsNull() || plan.QuotaSize.IsUnknown() {
 		plan.QuotaSize = types.Int64Value(int64(createdUser.QuotaSize))
 	}
-	if (plan.Active.IsNull() || plan.Active.IsUnknown()) && createdUser.Active != "" {
-		plan.Active = types.StringValue(createdUser.Active)
+	if plan.Active.IsNull() || plan.Active.IsUnknown() {
+		plan.Active = types.BoolValue(webUserYNToBool(createdUser.Active))
 	}
 	// UID and GID are computed-only, always set them from API response
 	if createdUser.UID != "" {
@@ -287,7 +303,7 @@ func (r *webUserResource) Read(ctx context.Context, req resource.ReadRequest, re
 	if shellUser.QuotaSize != 0 {
 		state.QuotaSize = types.Int64Value(int64(shellUser.QuotaSize))
 	}
-	state.Active = types.StringValue(shellUser.Active)
+	state.Active = types.BoolValue(webUserYNToBool(shellUser.Active))
 	if shellUser.ServerID != 0 {
 		state.ServerID = types.Int64Value(int64(shellUser.ServerID))
 	}
@@ -352,10 +368,13 @@ func (r *webUserResource) Update(ctx context.Context, req resource.UpdateRequest
 		shellUser.QuotaSize = client.FlexInt(plan.QuotaSize.ValueInt64())
 	}
 	if !plan.Active.IsNull() {
-		shellUser.Active = plan.Active.ValueString()
+		shellUser.Active = webUserBoolToYN(plan.Active.ValueBool())
 	}
 	if !plan.ServerID.IsNull() {
 		shellUser.ServerID = client.FlexInt(plan.ServerID.ValueInt64())
+	} else {
+		// Inherit server_id from parent domain
+		shellUser.ServerID = parentDomain.ServerID
 	}
 
 	// Update shell user
@@ -394,8 +413,8 @@ func (r *webUserResource) Update(ctx context.Context, req resource.UpdateRequest
 	if plan.QuotaSize.IsNull() || plan.QuotaSize.IsUnknown() {
 		plan.QuotaSize = types.Int64Value(int64(updatedUser.QuotaSize))
 	}
-	if (plan.Active.IsNull() || plan.Active.IsUnknown()) && updatedUser.Active != "" {
-		plan.Active = types.StringValue(updatedUser.Active)
+	if plan.Active.IsNull() || plan.Active.IsUnknown() {
+		plan.Active = types.BoolValue(webUserYNToBool(updatedUser.Active))
 	}
 	// UID and GID are computed-only, always set them from API response
 	if updatedUser.UID != "" {

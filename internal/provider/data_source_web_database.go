@@ -11,6 +11,11 @@ import (
 	"github.com/procorp-solutions/ispconfig-terraform-provider/internal/client"
 )
 
+// Helper function for Y/N to bool conversion
+func webDBDSYNToBool(s string) bool {
+	return s == "y" || s == "Y"
+}
+
 // Ensure the implementation satisfies the expected interfaces.
 var (
 	_ datasource.DataSource              = &webDatabaseDataSource{}
@@ -35,9 +40,9 @@ type webDatabaseDataSourceModel struct {
 	ParentDomainID types.Int64  `tfsdk:"parent_domain_id"`
 	Type           types.String `tfsdk:"type"`
 	Quota          types.Int64  `tfsdk:"quota"`
-	Active         types.String `tfsdk:"active"`
+	Active         types.Bool   `tfsdk:"active"`
 	ServerID       types.Int64  `tfsdk:"server_id"`
-	RemoteAccess   types.String `tfsdk:"remote_access"`
+	RemoteAccess   types.Bool   `tfsdk:"remote_access"`
 	RemoteIPs      types.String `tfsdk:"remote_ips"`
 }
 
@@ -75,7 +80,7 @@ func (d *webDatabaseDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				Description: "Database quota in MB.",
 				Computed:    true,
 			},
-			"active": schema.StringAttribute{
+			"active": schema.BoolAttribute{
 				Description: "Whether the database is active.",
 				Computed:    true,
 			},
@@ -83,7 +88,7 @@ func (d *webDatabaseDataSource) Schema(_ context.Context, _ datasource.SchemaReq
 				Description: "The server ID.",
 				Computed:    true,
 			},
-			"remote_access": schema.StringAttribute{
+			"remote_access": schema.BoolAttribute{
 				Description: "Remote access enabled.",
 				Computed:    true,
 			},
@@ -147,13 +152,13 @@ func (d *webDatabaseDataSource) Read(ctx context.Context, req datasource.ReadReq
 	} else {
 		config.Quota = types.Int64Null()
 	}
-	config.Active = types.StringValue(database.Active)
+	config.Active = types.BoolValue(webDBDSYNToBool(database.Active))
 	if database.ServerID != 0 {
 		config.ServerID = types.Int64Value(int64(database.ServerID))
 	} else {
 		config.ServerID = types.Int64Null()
 	}
-	config.RemoteAccess = types.StringValue(database.RemoteAccess)
+	config.RemoteAccess = types.BoolValue(webDBDSYNToBool(database.RemoteAccess))
 	config.RemoteIPs = types.StringValue(database.RemoteIPs)
 
 	diags = resp.State.Set(ctx, &config)

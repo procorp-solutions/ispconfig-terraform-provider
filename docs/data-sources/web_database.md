@@ -27,12 +27,12 @@ data "ispconfig_web_database" "example" {
 
 ### Read-Only
 
-- `active` (String) Whether the database is active.
+- `active` (Boolean) Whether the database is active.
 - `database_name` (String) The database name.
 - `database_user_id` (Number) The database user ID.
 - `parent_domain_id` (Number) The parent domain ID.
 - `quota` (Number) Database quota in MB.
-- `remote_access` (String) Remote access enabled.
+- `remote_access` (Boolean) Remote access enabled.
 - `remote_ips` (String) Comma-separated list of IPs allowed for remote access.
 - `server_id` (Number) The server ID.
 - `type` (String) The database type.

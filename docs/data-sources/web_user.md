@@ -27,7 +27,7 @@ data "ispconfig_web_user" "example" {
 
 ### Read-Only
 
-- `active` (String) Whether the shell user is active.
+- `active` (Boolean) Whether the shell user is active.
 - `dir` (String) The shell user directory path.
 - `gid` (String) The group ID.
 - `parent_domain_id` (Number) The parent domain ID.

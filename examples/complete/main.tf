@@ -59,7 +59,7 @@ resource "ispconfig_web_user" "deploy" {
   parent_domain_id = ispconfig_web_hosting.main.id
   shell            = "/bin/bash"
   quota_size       = var.shell_user_quota_mb
-  active           = "y"
+  active           = true
 }
 
 # =============================================================================
@@ -80,11 +80,11 @@ resource "ispconfig_web_database" "production" {
   parent_domain_id = ispconfig_web_hosting.main.id
   type             = "mysql"
   database_user_id = ispconfig_web_database_user.app.id
-  active           = "y"
+  active           = true
   quota            = var.database_quota_mb
 
   # Enable remote access if needed (e.g., for external backup tools)
-  remote_access = var.database_remote_access ? "y" : "n"
+  remote_access = var.database_remote_access
   remote_ips    = var.database_remote_access ? var.database_remote_ips : ""
 }
 
@@ -117,6 +117,6 @@ resource "ispconfig_web_database" "staging" {
   parent_domain_id = ispconfig_web_hosting.main.id
   type             = "mysql"
   database_user_id = ispconfig_web_database_user.app.id
-  active           = "y"
+  active           = true
   quota            = var.database_quota_mb / 4
 }
