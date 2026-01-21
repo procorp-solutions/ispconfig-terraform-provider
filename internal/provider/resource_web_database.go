@@ -35,6 +35,7 @@ var (
 	_ resource.Resource                = &webDatabaseResource{}
 	_ resource.ResourceWithConfigure   = &webDatabaseResource{}
 	_ resource.ResourceWithImportState = &webDatabaseResource{}
+	_ resource.ResourceWithUpgradeState = &webDatabaseResource{}
 )
 
 // NewWebDatabaseResource is a helper function to simplify the provider implementation.
@@ -63,6 +64,21 @@ type webDatabaseResourceModel struct {
 	RemoteIPs      types.String `tfsdk:"remote_ips"`
 }
 
+// webDatabaseResourceModelV0 represents the old state model with string active and remote_access attributes
+type webDatabaseResourceModelV0 struct {
+	ID             types.Int64  `tfsdk:"id"`
+	ClientID       types.Int64  `tfsdk:"client_id"`
+	DatabaseName   types.String `tfsdk:"database_name"`
+	DatabaseUserID types.Int64  `tfsdk:"database_user_id"`
+	ParentDomainID types.Int64  `tfsdk:"parent_domain_id"`
+	Type           types.String `tfsdk:"type"`
+	Quota          types.Int64  `tfsdk:"quota"`
+	Active         types.String `tfsdk:"active"`
+	ServerID       types.Int64  `tfsdk:"server_id"`
+	RemoteAccess   types.String `tfsdk:"remote_access"`
+	RemoteIPs      types.String `tfsdk:"remote_ips"`
+}
+
 // Metadata returns the resource type name.
 func (r *webDatabaseResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_web_database"
@@ -71,6 +87,7 @@ func (r *webDatabaseResource) Metadata(_ context.Context, req resource.MetadataR
 // Schema defines the schema for the resource.
 func (r *webDatabaseResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:     1,
 		Description: "Manages a database in ISP Config.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.Int64Attribute{
@@ -434,5 +451,107 @@ func (r *webDatabaseResource) ImportState(ctx context.Context, req resource.Impo
 	}
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), id)...)
+}
+
+// UpgradeState implements state migration from version 0 (string active/remote_access) to version 1 (bool active/remote_access)
+func (r *webDatabaseResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	// Prior schema for version 0
+	schemaV0 := schema.Schema{
+		Version: 0,
+		Attributes: map[string]schema.Attribute{
+			"id": schema.Int64Attribute{
+				Description: "The ID of the database.",
+				Computed:    true,
+			},
+			"client_id": schema.Int64Attribute{
+				Description: "The ISP Config client ID.",
+				Optional:    true,
+			},
+			"database_name": schema.StringAttribute{
+				Description: "The database name.",
+				Required:    true,
+			},
+			"database_user_id": schema.Int64Attribute{
+				Description: "The database user ID.",
+				Optional:    true,
+				Computed:    true,
+			},
+			"parent_domain_id": schema.Int64Attribute{
+				Description: "The parent domain ID.",
+				Required:    true,
+			},
+			"type": schema.StringAttribute{
+				Description: "The database type (e.g., 'mysql', 'postgresql').",
+				Optional:    true,
+				Computed:    true,
+			},
+			"quota": schema.Int64Attribute{
+				Description: "Database quota in MB.",
+				Optional:    true,
+				Computed:    true,
+			},
+			"active": schema.StringAttribute{
+				Description: "Whether the database is active ('y' or 'n').",
+				Optional:    true,
+				Computed:    true,
+			},
+			"server_id": schema.Int64Attribute{
+				Description: "The server ID.",
+				Optional:    true,
+				Computed:    true,
+			},
+			"remote_access": schema.StringAttribute{
+				Description: "Enable remote access ('y' or 'n').",
+				Optional:    true,
+				Computed:    true,
+			},
+			"remote_ips": schema.StringAttribute{
+				Description: "Comma-separated list of IPs allowed for remote access.",
+				Optional:    true,
+				Computed:    true,
+			},
+		},
+	}
+
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &schemaV0,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				// Decode old state (version 0) with string active and remote_access
+				var oldState webDatabaseResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &oldState)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+
+				// Convert to new state (version 1) with bool active and remote_access
+				var newState webDatabaseResourceModel
+				newState.ID = oldState.ID
+				newState.ClientID = oldState.ClientID
+				newState.DatabaseName = oldState.DatabaseName
+				newState.DatabaseUserID = oldState.DatabaseUserID
+				newState.ParentDomainID = oldState.ParentDomainID
+				newState.Type = oldState.Type
+				newState.Quota = oldState.Quota
+				// Convert string "y"/"Y" to bool true, anything else to false
+				if !oldState.Active.IsNull() && !oldState.Active.IsUnknown() {
+					newState.Active = types.BoolValue(webDBYNToBool(oldState.Active.ValueString()))
+				} else {
+					newState.Active = types.BoolValue(true) // default
+				}
+				newState.ServerID = oldState.ServerID
+				// Convert string "y"/"Y" to bool true, anything else to false
+				if !oldState.RemoteAccess.IsNull() && !oldState.RemoteAccess.IsUnknown() {
+					newState.RemoteAccess = types.BoolValue(webDBYNToBool(oldState.RemoteAccess.ValueString()))
+				} else {
+					newState.RemoteAccess = types.BoolValue(false) // default
+				}
+				newState.RemoteIPs = oldState.RemoteIPs
+
+				// Set the upgraded state
+				resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
+			},
+		},
+	}
 }
 

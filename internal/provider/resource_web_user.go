@@ -35,6 +35,7 @@ var (
 	_ resource.Resource                = &webUserResource{}
 	_ resource.ResourceWithConfigure   = &webUserResource{}
 	_ resource.ResourceWithImportState = &webUserResource{}
+	_ resource.ResourceWithUpgradeState = &webUserResource{}
 )
 
 // NewWebUserResource is a helper function to simplify the provider implementation.
@@ -64,6 +65,22 @@ type webUserResourceModel struct {
 	GID            types.String `tfsdk:"gid"`
 }
 
+// webUserResourceModelV0 represents the old state model with string active attribute
+type webUserResourceModelV0 struct {
+	ID             types.Int64  `tfsdk:"id"`
+	ClientID       types.Int64  `tfsdk:"client_id"`
+	Username       types.String `tfsdk:"username"`
+	Password       types.String `tfsdk:"password"`
+	ParentDomainID types.Int64  `tfsdk:"parent_domain_id"`
+	Dir            types.String `tfsdk:"dir"`
+	Shell          types.String `tfsdk:"shell"`
+	QuotaSize      types.Int64  `tfsdk:"quota_size"`
+	Active         types.String `tfsdk:"active"`
+	ServerID       types.Int64  `tfsdk:"server_id"`
+	UID            types.String `tfsdk:"uid"`
+	GID            types.String `tfsdk:"gid"`
+}
+
 // Metadata returns the resource type name.
 func (r *webUserResource) Metadata(_ context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
 	resp.TypeName = req.ProviderTypeName + "_web_user"
@@ -72,6 +89,7 @@ func (r *webUserResource) Metadata(_ context.Context, req resource.MetadataReque
 // Schema defines the schema for the resource.
 func (r *webUserResource) Schema(_ context.Context, _ resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
+		Version:     1,
 		Description: "Manages a shell user in ISP Config.",
 		Attributes: map[string]schema.Attribute{
 			"id": schema.Int64Attribute{
@@ -468,4 +486,105 @@ func (r *webUserResource) ImportState(ctx context.Context, req resource.ImportSt
 	}
 
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), id)...)
+}
+
+// UpgradeState implements state migration from version 0 (string active) to version 1 (bool active)
+func (r *webUserResource) UpgradeState(ctx context.Context) map[int64]resource.StateUpgrader {
+	// Prior schema for version 0
+	schemaV0 := schema.Schema{
+		Version: 0,
+		Attributes: map[string]schema.Attribute{
+			"id": schema.Int64Attribute{
+				Description: "The ID of the shell user.",
+				Computed:    true,
+			},
+			"client_id": schema.Int64Attribute{
+				Description: "The ISP Config client ID.",
+				Optional:    true,
+			},
+			"username": schema.StringAttribute{
+				Description: "The shell username.",
+				Required:    true,
+			},
+			"password": schema.StringAttribute{
+				Description: "The shell user password.",
+				Required:    true,
+				Sensitive:   true,
+			},
+			"parent_domain_id": schema.Int64Attribute{
+				Description: "The parent domain ID.",
+				Required:    true,
+			},
+			"dir": schema.StringAttribute{
+				Description: "The shell user directory path.",
+				Optional:    true,
+				Computed:    true,
+			},
+			"shell": schema.StringAttribute{
+				Description: "The shell for the user (e.g., '/bin/bash', '/bin/sh', '/bin/false', '/sbin/nologin').",
+				Optional:    true,
+				Computed:    true,
+			},
+			"quota_size": schema.Int64Attribute{
+				Description: "Quota size in MB.",
+				Optional:    true,
+				Computed:    true,
+			},
+			"active": schema.StringAttribute{
+				Description: "Whether the shell user is active ('y' or 'n').",
+				Optional:    true,
+				Computed:    true,
+			},
+			"server_id": schema.Int64Attribute{
+				Description: "The server ID.",
+				Optional:    true,
+				Computed:    true,
+			},
+			"uid": schema.StringAttribute{
+				Description: "The user ID.",
+				Computed:    true,
+			},
+			"gid": schema.StringAttribute{
+				Description: "The group ID.",
+				Computed:    true,
+			},
+		},
+	}
+
+	return map[int64]resource.StateUpgrader{
+		0: {
+			PriorSchema: &schemaV0,
+			StateUpgrader: func(ctx context.Context, req resource.UpgradeStateRequest, resp *resource.UpgradeStateResponse) {
+				// Decode old state (version 0) with string active
+				var oldState webUserResourceModelV0
+				resp.Diagnostics.Append(req.State.Get(ctx, &oldState)...)
+				if resp.Diagnostics.HasError() {
+					return
+				}
+
+				// Convert to new state (version 1) with bool active
+				var newState webUserResourceModel
+				newState.ID = oldState.ID
+				newState.ClientID = oldState.ClientID
+				newState.Username = oldState.Username
+				newState.Password = oldState.Password
+				newState.ParentDomainID = oldState.ParentDomainID
+				newState.Dir = oldState.Dir
+				newState.Shell = oldState.Shell
+				newState.QuotaSize = oldState.QuotaSize
+				// Convert string "y"/"Y" to bool true, anything else to false
+				if !oldState.Active.IsNull() && !oldState.Active.IsUnknown() {
+					newState.Active = types.BoolValue(webUserYNToBool(oldState.Active.ValueString()))
+				} else {
+					newState.Active = types.BoolValue(true) // default
+				}
+				newState.ServerID = oldState.ServerID
+				newState.UID = oldState.UID
+				newState.GID = oldState.GID
+
+				// Set the upgraded state
+				resp.Diagnostics.Append(resp.State.Set(ctx, &newState)...)
+			},
+		},
+	}
 }

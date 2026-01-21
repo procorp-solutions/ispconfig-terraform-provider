@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-01-22
+
+### Fixed
+
+- Fixed state migration issue: Added automatic state upgrade from version 0 (string `"y"`/`"n"` values) to version 1 (boolean values) for `ispconfig_web_user` and `ispconfig_web_database` resources
+- This resolves the "a bool is required" error when reading existing state files that contain string values for `active` and `remote_access` attributes
+
 ## [0.1.3] - 2026-01-22
 
 ### Fixed
