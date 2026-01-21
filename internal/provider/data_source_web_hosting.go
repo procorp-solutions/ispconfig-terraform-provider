@@ -47,9 +47,11 @@ type webHostingDataSourceModel struct {
 	Ruby           types.String `tfsdk:"ruby"`
 	Python         types.String `tfsdk:"python"`
 	SuExec         types.String `tfsdk:"suexec"`
-	SSL            types.String `tfsdk:"ssl"`
-	RedirectType   types.String `tfsdk:"redirect_type"`
-	RedirectPath   types.String `tfsdk:"redirect_path"`
+	SSL             types.String `tfsdk:"ssl"`
+	RedirectType    types.String `tfsdk:"redirect_type"`
+	RedirectPath    types.String `tfsdk:"redirect_path"`
+	PHPOpenBasedir  types.String `tfsdk:"php_open_basedir"`
+	ApacheDirectives types.String `tfsdk:"apache_directives"`
 }
 
 // Metadata returns the data source type name.
@@ -146,6 +148,14 @@ func (d *webHostingDataSource) Schema(_ context.Context, _ datasource.SchemaRequ
 				Description: "The redirect path.",
 				Computed:    true,
 			},
+			"php_open_basedir": schema.StringAttribute{
+				Description: "PHP open_basedir restriction. Limits which directories PHP can access.",
+				Computed:    true,
+			},
+			"apache_directives": schema.StringAttribute{
+				Description: "Custom Apache directives included in the vhost configuration.",
+				Computed:    true,
+			},
 		},
 	}
 }
@@ -225,6 +235,8 @@ func (d *webHostingDataSource) Read(ctx context.Context, req datasource.ReadRequ
 	config.SSL = types.StringValue(domain.SSL)
 	config.RedirectType = types.StringValue(domain.RedirectType)
 	config.RedirectPath = types.StringValue(domain.RedirectPath)
+	config.PHPOpenBasedir = types.StringValue(domain.PHPOpenBasedir)
+	config.ApacheDirectives = types.StringValue(domain.ApacheDirectives)
 
 	diags = resp.State.Set(ctx, &config)
 	resp.Diagnostics.Append(diags...)

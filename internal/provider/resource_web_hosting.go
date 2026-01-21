@@ -73,6 +73,8 @@ type webHostingResourceModel struct {
 	PMMaxRequests        types.Int64  `tfsdk:"pm_max_requests"`
 	HTTPPort             types.Int64  `tfsdk:"http_port"`
 	HTTPSPort            types.Int64  `tfsdk:"https_port"`
+	PHPOpenBasedir       types.String `tfsdk:"php_open_basedir"`
+	ApacheDirectives     types.String `tfsdk:"apache_directives"`
 }
 
 // Helper functions for bool to Y/N conversion
@@ -323,6 +325,16 @@ func (r *webHostingResource) Schema(_ context.Context, _ resource.SchemaRequest,
 				Computed:    true,
 				Default:     int64default.StaticInt64(443),
 			},
+			"php_open_basedir": schema.StringAttribute{
+				Description: "PHP open_basedir restriction. Limits which directories PHP can access.",
+				Optional:    true,
+				Computed:    true,
+			},
+			"apache_directives": schema.StringAttribute{
+				Description: "Custom Apache directives to include in the vhost configuration.",
+				Optional:    true,
+				Computed:    true,
+			},
 		},
 	}
 }
@@ -486,6 +498,12 @@ func (r *webHostingResource) Create(ctx context.Context, req resource.CreateRequ
 	if !plan.HTTPSPort.IsNull() {
 		domain.HTTPSPort = client.FlexInt(plan.HTTPSPort.ValueInt64())
 	}
+	if !plan.PHPOpenBasedir.IsNull() {
+		domain.PHPOpenBasedir = plan.PHPOpenBasedir.ValueString()
+	}
+	if !plan.ApacheDirectives.IsNull() {
+		domain.ApacheDirectives = plan.ApacheDirectives.ValueString()
+	}
 
 	// Create web domain
 	domainID, err := r.client.AddWebDomain(domain, clientID)
@@ -590,6 +608,12 @@ func (r *webHostingResource) Create(ctx context.Context, req resource.CreateRequ
 	if plan.PMMaxRequests.IsNull() || plan.PMMaxRequests.IsUnknown() {
 		plan.PMMaxRequests = types.Int64Value(int64(createdDomain.PMMaxRequests))
 	}
+	if plan.PHPOpenBasedir.IsNull() || plan.PHPOpenBasedir.IsUnknown() {
+		plan.PHPOpenBasedir = types.StringValue(createdDomain.PHPOpenBasedir)
+	}
+	if plan.ApacheDirectives.IsNull() || plan.ApacheDirectives.IsUnknown() {
+		plan.ApacheDirectives = types.StringValue(createdDomain.ApacheDirectives)
+	}
 
 	diags = resp.State.Set(ctx, plan)
 	resp.Diagnostics.Append(diags...)
@@ -665,6 +689,8 @@ func (r *webHostingResource) Read(ctx context.Context, req resource.ReadRequest,
 	if domain.HTTPSPort != 0 {
 		state.HTTPSPort = types.Int64Value(int64(domain.HTTPSPort))
 	}
+	state.PHPOpenBasedir = types.StringValue(domain.PHPOpenBasedir)
+	state.ApacheDirectives = types.StringValue(domain.ApacheDirectives)
 
 	diags = resp.State.Set(ctx, &state)
 	resp.Diagnostics.Append(diags...)
@@ -870,6 +896,12 @@ func (r *webHostingResource) Update(ctx context.Context, req resource.UpdateRequ
 	if !plan.HTTPSPort.IsNull() {
 		domain.HTTPSPort = client.FlexInt(plan.HTTPSPort.ValueInt64())
 	}
+	if !plan.PHPOpenBasedir.IsNull() {
+		domain.PHPOpenBasedir = plan.PHPOpenBasedir.ValueString()
+	}
+	if !plan.ApacheDirectives.IsNull() {
+		domain.ApacheDirectives = plan.ApacheDirectives.ValueString()
+	}
 
 	// Update web domain
 	err := r.client.UpdateWebDomain(domainID, clientID, domain)
@@ -933,6 +965,12 @@ func (r *webHostingResource) Update(ctx context.Context, req resource.UpdateRequ
 	}
 	if plan.PMMaxRequests.IsNull() || plan.PMMaxRequests.IsUnknown() {
 		plan.PMMaxRequests = types.Int64Value(int64(updatedDomain.PMMaxRequests))
+	}
+	if plan.PHPOpenBasedir.IsNull() || plan.PHPOpenBasedir.IsUnknown() {
+		plan.PHPOpenBasedir = types.StringValue(updatedDomain.PHPOpenBasedir)
+	}
+	if plan.ApacheDirectives.IsNull() || plan.ApacheDirectives.IsUnknown() {
+		plan.ApacheDirectives = types.StringValue(updatedDomain.ApacheDirectives)
 	}
 
 	diags = resp.State.Set(ctx, plan)

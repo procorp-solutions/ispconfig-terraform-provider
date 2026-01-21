@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-01-20
+## [0.1.2] - 2026-01-21
+
+### Added
+
+- Added `php_open_basedir` parameter to `ispconfig_web_hosting` resource for PHP open_basedir restrictions
+- Added `apache_directives` parameter to `ispconfig_web_hosting` resource for custom Apache configuration directives
+
+## [0.1.1] - 2026-01-20
 
 ### Added
 
